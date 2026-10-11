@@ -1,38 +1,90 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api'
+const API_URL =
+  import.meta.env.VITE_API_URL || "http://127.0.0.1:5000/api";
 
 async function request(path, options = {}) {
-  let res
+  let res;
+
   try {
+    const token = localStorage.getItem("access_token");
+
     res = await fetch(`${API_URL}${path}`, {
-      headers: { 'Content-Type': 'application/json' },
       ...options,
-    })
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
   } catch {
-    throw new Error('Server se connect nahi ho paya. Flask chal raha hai?')
+    throw new Error("Server se connect nahi ho paya. Flask chal raha hai?");
   }
 
-  let data = null
+  let data = null;
+
   try {
-    data = await res.json()
+    data = await res.json();
   } catch {
-    // response JSON nahi tha
+    // Response JSON nahi tha
   }
 
   if (!res.ok) {
-    throw new Error((data && data.error) || `Request fail hui (${res.status})`)
+    throw new Error(
+      (data && data.error) || `Request fail hui (${res.status})`
+    );
   }
-  return data
+
+  return data;
 }
 
 export const api = {
-  getPassage: (category = 'random') => request(`/passage?category=${category}`),
-  getResults: () => request('/results'),
-  getStats: () => request('/stats'),
+  // Authentication
+  register: (user) =>
+    request("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(user),
+    }),
+
+  login: async (credentials) => {
+    const data = await request("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(credentials),
+    });
+
+    localStorage.setItem("access_token", data.access_token);
+    return data;
+  },
+
+  getCurrentUser: () => request("/auth/me"),
+
+  logout: () => {
+    localStorage.removeItem("access_token");
+  },
+
+  // Existing typing-test APIs
+  getPassage: (category = "random") =>
+    request(`/passage?category=${encodeURIComponent(category)}`),
+
+  getResults: () => request("/results"),
+
+  getStats: () => request("/stats"),
+
   saveResult: (result) =>
-    request('/results', { method: 'POST', body: JSON.stringify(result) }),
-  getLearningDashboard: () => request('/learning/dashboard'),
-  getDailyGoal: () => request('/learning/daily-goal'),
-  getLesson: (id) => request(`/learning/lessons/${id}`),
+    request("/results", {
+      method: "POST",
+      body: JSON.stringify(result),
+    }),
+
+  // Existing learning APIs
+  getLearningDashboard: () => request("/learning/dashboard"),
+
+  getDailyGoal: () => request("/learning/daily-goal"),
+
+  getLesson: (id) =>
+    request(`/learning/lessons/${encodeURIComponent(id)}`),
+
   submitAttempt: (id, body) =>
-    request(`/learning/lessons/${id}/attempts`, { method: 'POST', body: JSON.stringify(body) }),
-}
+    request(`/learning/lessons/${encodeURIComponent(id)}/attempts`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+};

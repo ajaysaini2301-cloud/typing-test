@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 from flask import Flask, jsonify
 from flask_cors import CORS
+import os
 
 from routes import register_routes
 
@@ -17,6 +18,11 @@ def create_app():
     # React (Vite) frontend ko API access dene ke liye
     frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
     CORS(app, resources={r"/api/*": {"origins": frontend_origin}})
+
+    app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "")
+
+    if not app.config["JWT_SECRET_KEY"]:
+        raise RuntimeError("JWT_SECRET_KEY is missing from .env")
 
     # Saare blueprints register karo
     register_routes(app)
